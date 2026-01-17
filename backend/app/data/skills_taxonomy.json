@@ -1,0 +1,182 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-01-18",
+  "categories": [
+    {
+      "id": "programming_languages",
+      "name": "Programming Languages",
+      "skills": [
+        {
+          "name": "Python",
+          "aliases": ["python3"],
+          "related_to": ["Django", "FastAPI", "Flask", "NumPy"]
+        },
+        {
+          "name": "Java",
+          "aliases": ["core java"],
+          "related_to": ["Spring Boot", "Hibernate"]
+        },
+        {
+          "name": "C++",
+          "aliases": ["cpp"],
+          "related_to": ["STL", "Data Structures"]
+        },
+        {
+          "name": "JavaScript",
+          "aliases": ["js", "ecmascript"],
+          "related_to": ["React", "Node.js", "Express"]
+        }
+      ]
+    },
+    {
+      "id": "web_frameworks",
+      "name": "Web Frameworks",
+      "skills": [
+        {
+          "name": "FastAPI",
+          "aliases": [],
+          "requires": ["Python"]
+        },
+        {
+          "name": "Django",
+          "aliases": ["django rest framework", "drf"],
+          "requires": ["Python"]
+        },
+        {
+          "name": "React",
+          "aliases": ["reactjs"],
+          "requires": ["JavaScript"]
+        },
+        {
+          "name": "Node.js",
+          "aliases": ["node"],
+          "requires": ["JavaScript"]
+        }
+      ]
+    },
+    {
+      "id": "databases",
+      "name": "Databases",
+      "skills": [
+        {
+          "name": "MySQL",
+          "type": "relational",
+          "aliases": []
+        },
+        {
+          "name": "PostgreSQL",
+          "type": "relational",
+          "aliases": ["postgres"]
+        },
+        {
+          "name": "MongoDB",
+          "type": "nosql",
+          "aliases": []
+        },
+        {
+          "name": "Redis",
+          "type": "in-memory",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "data_science_ml",
+      "name": "Data Science & Machine Learning",
+      "skills": [
+        {
+          "name": "Machine Learning",
+          "subskills": [
+            "Supervised Learning",
+            "Unsupervised Learning",
+            "Feature Engineering",
+            "Model Evaluation"
+          ]
+        },
+        {
+          "name": "Deep Learning",
+          "related_to": ["Neural Networks", "Computer Vision", "NLP"]
+        },
+        {
+          "name": "NumPy",
+          "aliases": []
+        },
+        {
+          "name": "Pandas",
+          "aliases": []
+        },
+        {
+          "name": "Scikit-learn",
+          "aliases": ["sklearn"]
+        }
+      ]
+    },
+    {
+      "id": "cloud_devops",
+      "name": "Cloud & DevOps",
+      "skills": [
+        {
+          "name": "Docker",
+          "aliases": []
+        },
+        {
+          "name": "Kubernetes",
+          "aliases": ["k8s"]
+        },
+        {
+          "name": "AWS",
+          "aliases": ["amazon web services"],
+          "subskills": ["EC2", "S3", "Lambda", "RDS"]
+        },
+        {
+          "name": "CI/CD",
+          "aliases": ["continuous integration", "continuous deployment"]
+        }
+      ]
+    },
+    {
+      "id": "tools_platforms",
+      "name": "Tools & Platforms",
+      "skills": [
+        {
+          "name": "Git",
+          "aliases": ["git version control"]
+        },
+        {
+          "name": "GitHub",
+          "aliases": []
+        },
+        {
+          "name": "VS Code",
+          "aliases": ["visual studio code"]
+        },
+        {
+          "name": "Linux",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "soft_skills",
+      "name": "Soft Skills",
+      "skills": [
+        {
+          "name": "Problem Solving",
+          "aliases": []
+        },
+        {
+          "name": "Team Collaboration",
+          "aliases": ["teamwork"]
+        },
+        {
+          "name": "Communication",
+          "aliases": []
+        },
+        {
+          "name": "Time Management",
+          "aliases": []
+        }
+      ]
+    }
+  ]
+} 

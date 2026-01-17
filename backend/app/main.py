@@ -1,113 +1,460 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import json
+import uuid
 from pathlib import Path
+from app.services.parser_service import ResumeParser
+from app.services.matching_service import rank_jobs, get_matching_insights
+from app.services.gap_service import analyze_skill_gap, generate_learning_roadmap
 
 app = FastAPI(title="Wevolve API", version="1.0.0")
 
-# --- 1. SECURITY (CORS) ---
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows localhost:5173, 5174, etc.
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- 2. LOAD MOCK DATA ---
-mock_resume_path = Path(__file__).parent / "data" / "mock_resume.json"
-mock_jobs_path = Path(__file__).parent / "data" / "mock_jobs.json"
+# Initialize parser
+parser_service = ResumeParser()
 
-# Default fallback data (prevents crashes if files are missing)
-DEFAULT_RESUME = {
-    "name": "Sample User",
-    "email": "user@example.com",
-    "phone": "+91-9876543210",
-    "skills": ["Python", "React", "FastAPI"],
-    "education": [{"degree": "B.Tech", "institution": "IIT", "year": "2024"}],
-    "experience": [{"title": "Intern", "company": "TechCorp", "duration": "6 months"}],
-    "confidence_scores": {"overall": 0.9}
-}
+# Create uploads directory
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
-DEFAULT_JOBS = [
-    {
-        "job_id": "1",
-        "title": "Frontend Developer",
-        "company": "TechFlow",
-        "location": "Remote",
-        "salary_range": [120000, 150000],
-        "required_skills": ["React", "TypeScript"],
-        "match_score": 0.95
-    }
-]
+# Load mock data helpers
+def load_mock_resume():
+    file_path = Path(__file__).parent / "data" / "mock_resume.json"
+    try:
+        with open(file_path) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {
+            "name": "Sample User",
+            "email": "user@example.com",
+            "phone": "+91-0000000000",
+            "skills": [],
+            "education": [],
+            "experience": [],
+            "projects": [],
+            "confidence_scores": {}
+        }
 
-try:
-    with open(mock_resume_path) as f:
-        MOCK_RESUME = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError):
-    MOCK_RESUME = DEFAULT_RESUME
+def load_mock_jobs():
+    file_path = Path(__file__).parent / "data" / "mock_jobs.json"
+    try:
+        with open(file_path) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
 
-try:
-    with open(mock_jobs_path) as f:
-        MOCK_JOBS = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError):
-    MOCK_JOBS = DEFAULT_JOBS
-
-
-# --- 3. API ENDPOINTS (Fixed with /v1) ---
+# Store mock jobs in memory (load once)
+MOCK_JOBS = load_mock_jobs()
 
 @app.get("/")
 def root():
-    return {"status": "active", "message": "Wevolve API is running"}
+    return {
+        "message": "Wevolve API is running",
+        "version": "1.0.0",
+        "endpoints": {
+            "docs": "/docs",
+            "health": "/health",
+            "resume_parse": "POST /api/resume/parse",
+            "resume_save": "POST /api/resume/save",
+            "jobs_search": "GET /api/jobs/search",
+            "job_match_details": "GET /api/jobs/{job_id}/match",
+            "skills_analyze": "POST /api/skills/analyze"
+        }
+    }
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
-
-# 🚨 FIX: Added /v1 here
-@app.post("/api/v1/resume/parse")
-async def parse_resume(file: UploadFile = File(...)):
-    """Parse resume from PDF"""
-    return MOCK_RESUME
-
-# 🚨 FIX: Added /v1 here
-@app.get("/api/v1/jobs/search")
-def search_jobs(skills: str = ""):
-    """Search jobs"""
-    return MOCK_JOBS
-
-# 🚨 FIX: Added /v1 here
-@app.post("/api/v1/skills/analyze")
-def analyze_gap(data: dict):
-    """Analyze skill gaps"""
-    current_skills = set(data.get("current_skills", []))
-    target_skills = set(data.get("target_skills", []))
-    
-    matching = list(current_skills & target_skills)
-    missing = list(target_skills - current_skills)
-    
-    gap_percentage = (len(missing) / len(target_skills) * 100) if target_skills else 0
-    readiness = 100 - gap_percentage
-    
     return {
+        "status": "ok",
+        "service": "wevolve-api",
+        "version": "1.0.0",
+        "jobs_loaded": len(MOCK_JOBS),
+        "upload_dir": str(UPLOAD_DIR.absolute()),
+        "uploads_count": len(list(UPLOAD_DIR.glob("*.pdf")))
+    }
+
+@app.post("/api/resume/parse")
+async def parse_resume(file: UploadFile = File(...)):
+    """
+    Parse uploaded PDF resume
+    
+    Features:
+    - Real parsing for: name, email, phone, skills
+    - Basic extraction for: education, experience
+    - File storage with unique ID
+    - Confidence scores for all fields
+    
+    Returns:
+    - ParsedResume with confidence scores
+    - file_id for reference
+    - original_filename
+    """
+    # Validate file type
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    
+    content = await file.read()
+    
+    # Validate file size (5MB limit)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large (max 5MB)")
+    
+    try:
+        # Generate unique file ID
+        file_id = str(uuid.uuid4())
+        
+        # Save file to disk
+        file_path = UPLOAD_DIR / f"{file_id}.pdf"
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        # Real parsing
+        parsed_data = parser_service.parse(content)
+        
+        # Merge with mock for unimplemented fields (if needed)
+        mock_resume = load_mock_resume()
+        
+        # Use real data where available, mock as fallback
+        result = {
+            "file_id": file_id,
+            "original_filename": file.filename,
+            "name": parsed_data["name"],
+            "email": parsed_data["email"],
+            "phone": parsed_data["phone"],
+            "skills": parsed_data["skills"],
+            "education": parsed_data.get("education", []) or mock_resume.get("education", []),
+            "experience": parsed_data.get("experience", []) or mock_resume.get("experience", []),
+            "projects": parsed_data.get("projects", []),
+            "confidence_scores": parsed_data["confidence_scores"]
+        }
+        
+        print(f"✅ Parsed resume: {result['name']} ({len(result['skills'])} skills)")
+        print(f"   File saved: {file_id}.pdf")
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ Parse error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to parse resume: {str(e)}")
+
+@app.post("/api/resume/save")
+async def save_corrected_resume(data: dict):
+    """
+    Save user-corrected resume data
+    
+    This endpoint receives the parsed data after user corrections
+    and stores it for future use (job matching, profile creation, etc.)
+    
+    Request body:
+    {
+        "name": "John Doe",
+        "email": "john@example.com",
+        "phone": "+91-9876543210",
+        "skills": ["Python", "React", "Docker"],
+        "education": [...],
+        "experience": [...],
+        "projects": [...],
+        "file_id": "uuid-from-parse" (optional)
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "message": "Resume saved successfully",
+        "profile_id": "PROF_JOHNDOE",
+        "data": {...}
+    }
+    """
+    try:
+        # Validate required fields
+        required_fields = ["name", "email", "skills"]
+        missing_fields = [field for field in required_fields if field not in data]
+        
+        if missing_fields:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Missing required fields: {', '.join(missing_fields)}"
+            )
+        
+        # Validate email format
+        email = data.get("email", "")
+        if not "@" in email or not "." in email:
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        
+        # Validate skills is array
+        if not isinstance(data.get("skills", []), list):
+            raise HTTPException(status_code=400, detail="Skills must be an array")
+        
+        # Generate profile ID from email
+        profile_id = f"PROF_{email.split('@')[0].upper().replace('.', '_')}"
+        
+        # TODO: Save to database
+        # For now, save to JSON file for demo
+        profiles_dir = Path("saved_profiles")
+        profiles_dir.mkdir(exist_ok=True)
+        
+        profile_file = profiles_dir / f"{profile_id}.json"
+        with open(profile_file, "w") as f:
+            json.dump(data, f, indent=2)
+        
+        print(f"✅ Saved corrected resume for: {data['name']}")
+        print(f"   Email: {email}")
+        print(f"   Skills: {len(data.get('skills', []))}")
+        print(f"   Profile ID: {profile_id}")
+        print(f"   Saved to: {profile_file}")
+        
+        return {
+            "success": True,
+            "message": "Resume saved successfully",
+            "profile_id": profile_id,
+            "data": data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Save error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to save resume: {str(e)}"
+        )
+
+@app.get("/api/resume/{profile_id}")
+def get_saved_resume(profile_id: str):
+    """
+    Retrieve a saved resume by profile ID
+    
+    Path params:
+    - profile_id: Profile ID (e.g., "PROF_JOHNDOE")
+    
+    Returns saved resume data or 404 if not found
+    """
+    try:
+        profiles_dir = Path("saved_profiles")
+        profile_file = profiles_dir / f"{profile_id}.json"
+        
+        if not profile_file.exists():
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Profile {profile_id} not found"
+            )
+        
+        with open(profile_file, "r") as f:
+            data = json.load(f)
+        
+        print(f"✅ Retrieved profile: {profile_id}")
+        
+        return {
+            "success": True,
+            "profile_id": profile_id,
+            "data": data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Retrieve error: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to retrieve profile: {str(e)}"
+        )
+
+@app.get("/api/jobs/search")
+def search_jobs(
+    skills: str = "",
+    experience: int = 0,
+    location: str = None,
+    min_salary: int = None,
+    max_salary: int = None
+):
+    """
+    Search and rank jobs based on candidate profile
+    
+    Query params:
+    - skills: Comma-separated list (e.g., "Python,React,Docker")
+    - experience: Years of experience (default: 0)
+    - location: Preferred location (optional, filters for exact match or Remote)
+    - min_salary: Minimum salary in INR (optional)
+    - max_salary: Maximum salary in INR (optional)
+    
+    Returns:
+    - List of jobs ranked by match_score (highest first)
+    - Each job includes match_score field (0-100)
+    """
+    try:
+        # Parse candidate skills
+        candidate_skills = [s.strip() for s in skills.split(",")] if skills else []
+        
+        # Use copy to avoid modifying original MOCK_JOBS
+        jobs_copy = [job.copy() for job in MOCK_JOBS]
+        
+        # Rank jobs with matching algorithm
+        ranked_jobs = rank_jobs(
+            candidate_skills=candidate_skills,
+            jobs=jobs_copy,
+            experience_years=experience,
+            location_preference=location,
+            min_salary=min_salary,
+            max_salary=max_salary
+        )
+        
+        print(f"✅ Ranked {len(ranked_jobs)} jobs for {len(candidate_skills)} skills")
+        print(f"   Top 3 scores: {[j.get('match_score', 0) for j in ranked_jobs[:3]]}")
+        
+        return ranked_jobs
+        
+    except Exception as e:
+        print(f"❌ Job search error: {e}")
+        raise HTTPException(status_code=500, detail=f"Job search failed: {str(e)}")
+
+@app.get("/api/jobs/{job_id}/match")
+def get_job_match_details(job_id: str, skills: str = ""):
+    """
+    Get detailed match insights for a specific job
+    
+    Path params:
+    - job_id: Job ID (e.g., "J001")
+    
+    Query params:
+    - skills: Comma-separated candidate skills
+    
+    Returns:
+    - Job details
+    - Matching skills (green - candidate has these)
+    - Missing skills (red - candidate needs these)
+    - Additional skills (blue - candidate has, but job doesn't require)
+    - Match percentage
+    """
+    try:
+        candidate_skills = [s.strip() for s in skills.split(",")] if skills else []
+        
+        # Find the job
+        job = next((j for j in MOCK_JOBS if j["job_id"] == job_id), None)
+        if not job:
+            raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        
+        # Get detailed insights
+        insights = get_matching_insights(candidate_skills, job)
+        
+        print(f"✅ Match details for {job_id}: {insights['match_percentage']}% match")
+        
+        return {
+            "job": job,
+            "insights": insights
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Match details error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get match details: {str(e)}")
+
+@app.post("/api/skills/analyze")
+def analyze_gap_endpoint(data: dict):
+    """
+    Analyze skill gaps and generate learning roadmap
+    
+    Request body:
+    {
+        "current_skills": ["Python", "React", "FastAPI"],
+        "target_skills": ["Python", "React", "FastAPI", "Docker", "AWS", "Kubernetes"]
+    }
+    
+    Returns:
+    {
         "analysis": {
-            "matching_skills": matching,
-            "missing_skills": missing,
-            "skill_gap_percentage": round(gap_percentage, 1),
-            "readiness_score": round(readiness, 1),
-            "estimated_learning_time_months": len(missing) * 2
+            "matching_skills": ["Python", "React", "FastAPI"],
+            "missing_skills": ["Docker", "AWS", "Kubernetes"],
+            "skill_gap_percentage": 50.0,
+            "readiness_score": 50.0,
+            "estimated_learning_time_months": 10,
+            "confidence_level": "Medium - Close to ready"
         },
         "learning_roadmap": [
             {
-                "phase": i + 1,
+                "phase": 1,
                 "duration_months": 2,
-                "focus": f"Learn {skill}",
-                "skills_to_learn": [skill],
-                "priority": "High" if i < 2 else "Medium",
-                "reasoning": f"{skill} is essential"
-            }
-            for i, skill in enumerate(missing[:5])
+                "focus": "Foundation & Quick Wins",
+                "skills_to_learn": ["Docker"],
+                "priority": "High",
+                "reasoning": "These skills have no prerequisites...",
+                "resources": [...]
+            },
+            ...
         ]
+    }
+    """
+    try:
+        current_skills = data.get("current_skills", [])
+        target_skills = data.get("target_skills", [])
+        
+        # Validation
+        if not target_skills:
+            raise HTTPException(
+                status_code=400, 
+                detail="target_skills is required and cannot be empty"
+            )
+        
+        if not isinstance(current_skills, list) or not isinstance(target_skills, list):
+            raise HTTPException(
+                status_code=400,
+                detail="current_skills and target_skills must be arrays"
+            )
+        
+        # Analyze gap using the smart gap service
+        analysis = analyze_skill_gap(current_skills, target_skills)
+        
+        # Generate phased learning roadmap
+        roadmap = generate_learning_roadmap(
+            analysis["missing_skills"],
+            current_skills
+        )
+        
+        print(f"✅ Gap analysis complete:")
+        print(f"   Missing: {len(analysis['missing_skills'])} skills")
+        print(f"   Readiness: {analysis['readiness_score']}%")
+        print(f"   Roadmap: {len(roadmap)} phases")
+        
+        return {
+            "analysis": analysis,
+            "learning_roadmap": roadmap
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Gap analysis error: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Gap analysis failed: {str(e)}"
+        )
+
+@app.get("/api/skills/available")
+def get_available_skills():
+    """
+    Get list of all skills across all jobs (for autocomplete/suggestions)
+    
+    Returns all unique skills from job listings
+    """
+    all_skills = set()
+    for job in MOCK_JOBS:
+        all_skills.update(job.get("required_skills", []))
+    
+    return {
+        "skills": sorted(list(all_skills)),
+        "count": len(all_skills)
     }
 
 if __name__ == "__main__":
