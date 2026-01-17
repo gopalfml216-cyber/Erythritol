@@ -1,14 +1,19 @@
 import React, { useEffect } from 'react';
 import { useUserStore } from '../store/useUserStore';
-import { SkillRadarChart } from '../components/skills/SkillRadarChart'; // <--- Check path!
-import { RoadmapTimeline } from '../components/skills/RoadmapTimeline'; // <--- Check path!
-import { Trophy, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { RefreshCw, Target, Users, Info, TrendingUp, AlertCircle, ArrowLeft } from 'lucide-react';
+
+// --- Components ---
+import { SkillRadarChart } from '../components/skills/SkillRadarChart';
+import { RoadmapTimeline } from '../components/skills/RoadmapTimeline';
+import { GapAnalysisCard } from '../components/skills/GapAnalysisCard';
+import { ReadinessScore } from '../components/skills/ReadinessScore';
+import { SkillsList } from '../components/skills/SkillsList';
 
 const SkillsGapPage = () => {
   const { candidate, setCandidate } = useUserStore();
 
-  // DEV MODE: Load Demo Data if empty
   useEffect(() => {
     if (!candidate) {
       setCandidate({
@@ -18,67 +23,146 @@ const SkillsGapPage = () => {
         skills: ["React", "JavaScript", "HTML", "CSS"], 
         experience: [],
         education: [],
-        projects: ["Portfolio Website", "E-commerce App"], // <--- ADDED THIS
-        confidence_scores: { skills: 0.85, email: 1, phone: 1 } // <--- ADDED THIS
+        projects: ["Portfolio Website", "E-commerce App"],
+        confidence_scores: { skills: 0.85, email: 1, phone: 1 }
       });
     }
   }, [candidate, setCandidate]);
 
-  if (!candidate) return <div className="p-20 text-center">Loading Demo Data...</div>;
+  if (!candidate) return <div className="min-h-screen bg-[#050505] pt-32 text-center font-bold text-slate-500 font-['Space_Grotesk']">Initializing Analysis...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#050505] pt-24 pb-12 px-4 md:px-8 font-['Plus_Jakarta_Sans'] text-white relative">
+      
+      {/* Background Grid */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-[0.3] -z-10 pointer-events-none" />
+      <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-[#050505] to-transparent -z-10" />
+
+      <div className="max-w-[1400px] mx-auto space-y-6">
         
-        {/* 1. Header Card */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Career Analysis: {candidate.name}</h1>
-            <p className="text-gray-500">Target Role: <span className="font-semibold text-blue-600">Senior Full Stack Developer</span></p>
-          </div>
+        {/* --- NAVIGATION: BACK BUTTON --- */}
+        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+          <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors group">
+            <div className="p-2 rounded-lg bg-white/5 border border-white/5 group-hover:bg-white/10 group-hover:border-white/10 transition-all">
+               <ArrowLeft size={16} />
+            </div>
+            <span className="text-sm font-bold font-['Space_Grotesk']">Back to Dashboard</span>
+          </Link>
+        </motion.div>
+
+        <div className="grid grid-cols-12 gap-6">
           
-          <div className="flex items-center gap-6">
-             <Link to="/resume" className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1">
-                <RefreshCw size={14} /> Re-upload Resume
-             </Link>
-             <div className="flex gap-4">
-                <div className="text-right">
-                  <p className="text-sm text-gray-400">Match Score</p>
-                  <p className="text-2xl font-bold text-blue-600">65%</p>
-                </div>
-                <div className="h-12 w-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
-                  <TrendingUp size={24} />
-                </div>
-             </div>
+          {/* --- ROW 1: HEADER & SCORE --- */}
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+            className="col-span-12 bg-[#0A0A0A] p-8 rounded-3xl border border-white/10 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6"
+          >
+            <div className="flex items-center gap-5">
+              <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center text-indigo-400 border border-white/10">
+                <Target size={32} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white tracking-tight font-['Space_Grotesk']">Analysis: {candidate.name}</h1>
+                <p className="text-slate-400 font-medium text-sm mt-1">Target Role: <span className="text-indigo-400 font-bold">Senior Full Stack Developer</span></p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-8">
+              <Link to="/" className="text-xs font-bold text-slate-500 hover:text-white transition-colors flex items-center gap-2 uppercase tracking-widest">
+                 <RefreshCw size={14} /> Re-upload
+              </Link>
+              <ReadinessScore score={65} previousScore={60} />
+            </div>
+          </motion.div>
+
+          {/* --- ROW 2: RADAR & SKILLS LIST --- */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+            className="col-span-12 lg:col-span-8 bg-[#0A0A0A] p-8 rounded-3xl border border-white/10 shadow-2xl min-h-[500px]"
+          >
+            <div className="flex justify-between items-start mb-6">
+              <h3 className="text-xl font-bold text-white font-['Space_Grotesk']">Competency Vector</h3>
+              <div className="flex gap-4 text-[10px] font-bold uppercase tracking-widest bg-white/5 px-3 py-2 rounded-lg border border-white/5">
+                  <span className="flex items-center gap-2 text-indigo-400">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"/> You
+                  </span>
+                  <span className="flex items-center gap-2 text-slate-500">
+                  <div className="w-2 h-2 rounded-full bg-slate-600"/> Benchmark
+                  </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+               <div className="md:col-span-8 h-[400px] w-full bg-[#050505] rounded-2xl flex items-center justify-center border border-white/5 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
+                  <SkillRadarChart skills={candidate.skills} /> 
+               </div>
+
+               <div className="md:col-span-4 flex flex-col gap-4">
+                  <div className="p-4 bg-[#111] border border-white/5 rounded-2xl">
+                      <div className="flex items-center gap-2 mb-2 text-slate-400">
+                          <Info size={14} />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Graph Guide</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                          The <span className="text-slate-300">Grey Area</span> is the ideal Senior Role profile. The <span className="text-indigo-400">Indigo Area</span> is your current skill shape.
+                      </p>
+                  </div>
+                  <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex-1">
+                     <div className="flex items-center gap-2 mb-3 text-indigo-400">
+                        <TrendingUp size={16} />
+                        <span className="text-xs font-bold uppercase tracking-widest">Key Insight</span>
+                     </div>
+                     <p className="text-xs text-slate-300 leading-relaxed font-medium mb-3">
+                        Your profile is heavily weighted towards <strong>Frontend Engineering</strong>.
+                     </p>
+                     <div className="flex gap-2 items-start p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/20">
+                        <AlertCircle size={14} className="text-indigo-300 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-indigo-200 font-medium">
+                           To reach Senior level, expand coverage in <strong>System Design</strong>.
+                        </p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+            className="col-span-12 lg:col-span-4 h-full"
+          >
+            <SkillsList skills={candidate.skills} />
+          </motion.div>
+
+          <div className="col-span-12 md:col-span-4">
+            <GapAnalysisCard missingSkill="System Design" impactScore={15} type="critical" />
+          </div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="col-span-12 md:col-span-8 bg-[#0A0A0A] p-8 rounded-3xl border border-white/10 shadow-2xl"
+          >
+            <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xl font-bold text-white font-['Space_Grotesk']">Personalized Learning Path</h3>
+               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white/5 px-2 py-1 rounded">AI Generated</span>
+            </div>
+            <div className="bg-[#0E0E0E] rounded-2xl p-6 border border-white/5">
+               <RoadmapTimeline />
+            </div>
+          </motion.div>
+
+          <div className="col-span-12 bg-[#0A0A0A] p-8 rounded-3xl border border-white/10 shadow-2xl flex items-center justify-between group cursor-pointer hover:border-white/20 transition-all">
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-2 font-['Space_Grotesk']">Unlock Expert Network</h3>
+              <p className="text-slate-500 text-sm max-w-md font-medium">
+                Get peer-to-peer reviews from Senior Engineers at TechCorp, Google, and Amazon.
+              </p>
+            </div>
+            <button className="w-14 h-14 bg-white text-black rounded-xl flex items-center justify-center hover:bg-slate-200 transition-all">
+              <Users size={24} />
+            </button>
           </div>
         </div>
-
-        {/* 2. Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Radar Chart */}
-          <div className="lg:col-span-2 h-[450px]"> 
-            {/* Pass the real skills from the candidate */}
-            <SkillRadarChart skills={candidate.skills} />
-          </div>
-
-          {/* Right: Roadmap */}
-          <div className="lg:col-span-1 h-[450px]">
-            <RoadmapTimeline />
-          </div>
-        </div>
-
-        {/* 3. Missing Skills Alert */}
-        <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3">
-          <AlertCircle className="text-amber-600 mt-1 shrink-0" />
-          <div>
-            <h4 className="font-bold text-amber-900">Critical Skills Missing</h4>
-            <p className="text-amber-800 text-sm mt-1">
-              To reach "Senior" level, you need to demonstrate experience with 
-              <span className="font-bold"> System Design</span> and <span className="font-bold"> Cloud Architecture (AWS)</span>.
-            </p>
-          </div>
-        </div>
-
       </div>
     </div>
   );

@@ -1,48 +1,81 @@
 import React from 'react';
-import { CheckCircle2, Circle, Lock } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { LucideIcon, Lock, CheckCircle2, CircleDashed } from 'lucide-react';
 
-interface RoadmapPhaseProps {
-  phase: number;
+export interface RoadmapStep {
+  id: number;
   title: string;
+  desc: string;
+  status: 'completed' | 'current' | 'locked';
   duration: string;
-  status: 'completed' | 'in-progress' | 'locked';
-  description: string;
 }
 
-export const RoadmapPhase = ({ phase, title, duration, status, description }: RoadmapPhaseProps) => {
-  return (
-    <motion.div 
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: phase * 0.1 }}
-      className={`relative flex gap-4 p-4 rounded-xl border transition-all ${
-        status === 'in-progress' ? 'bg-blue-50 border-blue-200' : 
-        status === 'completed' ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100 opacity-75'
-      }`}
-    >
-      {/* Icon Indicator */}
-      <div className={`
-        shrink-0 w-8 h-8 rounded-full flex items-center justify-center border-2
-        ${status === 'completed' ? 'bg-green-100 border-green-500 text-green-600' : 
-          status === 'in-progress' ? 'bg-blue-100 border-blue-500 text-blue-600' : 'bg-gray-100 border-gray-300 text-gray-400'}
-      `}>
-        {status === 'completed' ? <CheckCircle2 size={16} /> : 
-         status === 'in-progress' ? <Circle size={16} /> : <Lock size={16} />}
-      </div>
+interface RoadmapPhaseProps {
+  step: RoadmapStep;
+  index: number;
+}
 
-      {/* Content */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span className={`text-xs font-bold uppercase tracking-wider ${
-            status === 'in-progress' ? 'text-blue-600' : 'text-gray-400'
-          }`}>
-            Phase {phase} • {duration}
-          </span>
+export const RoadmapPhase: React.FC<RoadmapPhaseProps> = ({ step, index }) => {
+  const getStatusStyles = () => {
+    switch (step.status) {
+      case 'completed':
+        return {
+          border: 'border-emerald-500/20 hover:border-emerald-500/40',
+          bg: 'bg-emerald-900/10',
+          iconColor: 'text-emerald-400',
+          textColor: 'text-slate-300',
+          Icon: CheckCircle2
+        };
+      case 'current':
+        return {
+          border: 'border-indigo-500/40 hover:border-indigo-500/60 shadow-[0_0_20px_-5px_rgba(99,102,241,0.15)]',
+          bg: 'bg-indigo-900/10',
+          iconColor: 'text-indigo-400',
+          textColor: 'text-white',
+          Icon: CircleDashed
+        };
+      default: // locked
+        return {
+          border: 'border-white/5 hover:border-white/10',
+          bg: 'bg-[#111]',
+          iconColor: 'text-slate-600',
+          textColor: 'text-slate-500',
+          Icon: Lock
+        };
+    }
+  };
+
+  const styles = getStatusStyles();
+  const Icon = styles.Icon;
+
+  return (
+    <div className={`relative p-5 rounded-2xl border ${styles.border} ${styles.bg} transition-all duration-300 group`}>
+      {/* Connector Line (except for last item) */}
+      <div className="absolute left-[29px] top-[50px] bottom-[-20px] w-px bg-white/5 z-0 group-last:hidden" />
+
+      <div className="flex items-start gap-4 relative z-10">
+        <div className={`mt-0.5 p-1 rounded-full bg-[#050505] border border-white/5 ${styles.iconColor}`}>
+          <Icon size={16} />
         </div>
-        <h4 className="font-bold text-gray-900">{title}</h4>
-        <p className="text-sm text-gray-500 mt-1">{description}</p>
+        
+        <div className="w-full">
+          <div className="flex justify-between items-center mb-1">
+             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 font-['Space_Grotesk']">
+               Phase 0{index + 1}
+             </span>
+             <span className="text-[9px] font-bold bg-black/40 px-2 py-0.5 rounded text-slate-400 border border-white/5">
+               {step.duration}
+             </span>
+          </div>
+          
+          <h4 className={`text-sm font-bold mb-2 ${styles.textColor} font-['Plus_Jakarta_Sans']`}>
+            {step.title}
+          </h4>
+          
+          <p className="text-xs text-slate-400 leading-relaxed font-medium">
+            {step.desc}
+          </p>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
