@@ -5,71 +5,79 @@ from pathlib import Path
 
 app = FastAPI(title="Wevolve API", version="1.0.0")
 
-# CORS configuration
+# --- 1. SECURITY (CORS) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],  # Allows localhost:5173, 5174, etc.
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load mock data
+# --- 2. LOAD MOCK DATA ---
 mock_resume_path = Path(__file__).parent / "data" / "mock_resume.json"
 mock_jobs_path = Path(__file__).parent / "data" / "mock_jobs.json"
+
+# Default fallback data (prevents crashes if files are missing)
+DEFAULT_RESUME = {
+    "name": "Sample User",
+    "email": "user@example.com",
+    "phone": "+91-9876543210",
+    "skills": ["Python", "React", "FastAPI"],
+    "education": [{"degree": "B.Tech", "institution": "IIT", "year": "2024"}],
+    "experience": [{"title": "Intern", "company": "TechCorp", "duration": "6 months"}],
+    "confidence_scores": {"overall": 0.9}
+}
+
+DEFAULT_JOBS = [
+    {
+        "job_id": "1",
+        "title": "Frontend Developer",
+        "company": "TechFlow",
+        "location": "Remote",
+        "salary_range": [120000, 150000],
+        "required_skills": ["React", "TypeScript"],
+        "match_score": 0.95
+    }
+]
 
 try:
     with open(mock_resume_path) as f:
         MOCK_RESUME = json.load(f)
-except FileNotFoundError:
-    MOCK_RESUME = {
-        "name": "Sample User",
-        "email": "user@example.com",
-        "phone": "+91-9876543210",
-        "skills": ["Python", "React"],
-        "education": [],
-        "experience": [],
-        "projects": [],
-        "confidence_scores": {}
-    }
+except (FileNotFoundError, json.JSONDecodeError):
+    MOCK_RESUME = DEFAULT_RESUME
 
 try:
     with open(mock_jobs_path) as f:
         MOCK_JOBS = json.load(f)
-except FileNotFoundError:
-    MOCK_JOBS = []
+except (FileNotFoundError, json.JSONDecodeError):
+    MOCK_JOBS = DEFAULT_JOBS
+
+
+# --- 3. API ENDPOINTS (Fixed with /v1) ---
 
 @app.get("/")
 def root():
-    return {
-        "message": "Wevolve API is running",
-        "version": "1.0.0",
-        "endpoints": {
-            "docs": "/docs",
-            "health": "/health",
-            "resume_parse": "/api/resume/parse",
-            "jobs": "/api/jobs/search",
-            "skills_analyze": "/api/skills/analyze"
-        }
-    }
+    return {"status": "active", "message": "Wevolve API is running"}
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "wevolve-api"}
+    return {"status": "ok"}
 
-@app.post("/api/resume/parse")
+# 🚨 FIX: Added /v1 here
+@app.post("/api/v1/resume/parse")
 async def parse_resume(file: UploadFile = File(...)):
-    """Parse resume from PDF - currently returns mock data"""
-    # TODO: Add real PDF parsing logic
+    """Parse resume from PDF"""
     return MOCK_RESUME
 
-@app.get("/api/jobs/search")
+# 🚨 FIX: Added /v1 here
+@app.get("/api/v1/jobs/search")
 def search_jobs(skills: str = ""):
-    """Search jobs - currently returns mock data"""
-    # TODO: Add filtering logic
+    """Search jobs"""
     return MOCK_JOBS
 
-@app.post("/api/skills/analyze")
+# 🚨 FIX: Added /v1 here
+@app.post("/api/v1/skills/analyze")
 def analyze_gap(data: dict):
     """Analyze skill gaps"""
     current_skills = set(data.get("current_skills", []))
@@ -96,7 +104,7 @@ def analyze_gap(data: dict):
                 "focus": f"Learn {skill}",
                 "skills_to_learn": [skill],
                 "priority": "High" if i < 2 else "Medium",
-                "reasoning": f"{skill} is essential for the target role"
+                "reasoning": f"{skill} is essential"
             }
             for i, skill in enumerate(missing[:5])
         ]

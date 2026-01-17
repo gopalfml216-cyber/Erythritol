@@ -1,26 +1,25 @@
 import React, { useEffect } from 'react';
 import { useUserStore } from '../store/useUserStore';
-import { SkillRadarChart } from '../components/skills/SkillRadarChart';
-import { RoadmapTimeline } from '../components/skills/RoadmapTimeline';
+import { SkillRadarChart } from '../components/skills/SkillRadarChart'; // <--- Check path!
+import { RoadmapTimeline } from '../components/skills/RoadmapTimeline'; // <--- Check path!
 import { Trophy, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const SkillsGapPage = () => {
   const { candidate, setCandidate } = useUserStore();
 
-  // DEV MODE: If no data exists, load this Mock Data automatically
-  // This ensures you ALWAYS see the page during development
+  // DEV MODE: Load Demo Data if empty
   useEffect(() => {
     if (!candidate) {
       setCandidate({
         name: "Demo Candidate",
         email: "demo@example.com",
         phone: "123-456-7890",
-        // These skills will be compared in the Radar Chart
         skills: ["React", "JavaScript", "HTML", "CSS"], 
         experience: [],
         education: [],
-        confidenceScore: 85
+        projects: ["Portfolio Website", "E-commerce App"], // <--- ADDED THIS
+        confidence_scores: { skills: 0.85, email: 1, phone: 1 } // <--- ADDED THIS
       });
     }
   }, [candidate, setCandidate]);
@@ -39,7 +38,7 @@ const SkillsGapPage = () => {
           </div>
           
           <div className="flex items-center gap-6">
-             <Link to="/" className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1">
+             <Link to="/resume" className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1">
                 <RefreshCw size={14} /> Re-upload Resume
              </Link>
              <div className="flex gap-4">
@@ -56,12 +55,13 @@ const SkillsGapPage = () => {
 
         {/* 2. Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Radar Chart (Takes up 2 columns) */}
-          <div className="lg:col-span-2 h-[450px]"> {/* Fixed Height ensures chart renders */}
+          {/* Left: Radar Chart */}
+          <div className="lg:col-span-2 h-[450px]"> 
+            {/* Pass the real skills from the candidate */}
             <SkillRadarChart skills={candidate.skills} />
           </div>
 
-          {/* Right: Roadmap (Takes up 1 column) */}
+          {/* Right: Roadmap */}
           <div className="lg:col-span-1 h-[450px]">
             <RoadmapTimeline />
           </div>
