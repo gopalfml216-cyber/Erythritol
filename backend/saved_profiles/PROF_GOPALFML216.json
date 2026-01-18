@@ -1,0 +1,95 @@
+{
+  "file_id": "c510866c-4529-43a2-b2bd-2a9f9052f407",
+  "original_filename": "Gopal_Agarwal_Intern (2).pdf",
+  "name": "GOPAL AGARWAL",
+  "email": "gopalfml216@gmail.com",
+  "phone": "8391860676",
+  "skills": [
+    "css",
+    "html",
+    "javascript",
+    "python",
+    "spring",
+    "vs code"
+  ],
+  "education": [
+    {
+      "degree": "Be",
+      "institution": "Institute",
+      "year": "20-Present",
+      "field": "Computer Science",
+      "cgpa": 7.25
+    },
+    {
+      "degree": "ma",
+      "institution": "School",
+      "year": "20-Present",
+      "field": "Computer Science",
+      "cgpa": 7.25
+    },
+    {
+      "degree": "Ba",
+      "institution": "NIT",
+      "year": "",
+      "field": "Computer Science",
+      "cgpa": 7.25
+    },
+    {
+      "degree": "Ma",
+      "institution": "NIT",
+      "year": "",
+      "field": "Computer Science",
+      "cgpa": 7.25
+    },
+    {
+      "degree": "Me",
+      "institution": "NIT",
+      "year": "",
+      "field": "Computer Science",
+      "cgpa": 7.25
+    },
+    {
+      "degree": "Ma",
+      "institution": "NIT",
+      "year": "",
+      "field": "Computer Science",
+      "cgpa": 7.25
+    }
+  ],
+  "experience": [
+    {
+      "title": "Developer",
+      "company": "inc",
+      "duration": "Aug 20 - Present ",
+      "description": [
+        "Designed 3+ interactive Excel dashboards using pivot tables, slicers, and conditional formatting to track 12+",
+        "Conducted 4+ scenario, sensitivity, and working-capital analyses; automated 100+ calculations via Excel"
+      ]
+    },
+    {
+      "title": "Lead",
+      "company": "Technologies",
+      "duration": "Not specified",
+      "description": [
+        "Led sponsorship and management operations for FitCon Intra-NIT Arm-Wrestling 2024, raising Rs 50,000 and",
+        "Served as Coordinator for Innovision (technical fest) and Cosmopolitan (multi-ethnic fest) at NIT Rourkela,",
+        "Active member of NIT Rourkela\u2019s Algorithm and Programming Society (APS), Finance Club, and FitCon Club,"
+      ]
+    }
+  ],
+  "projects": [
+    "To-Do List Web App | HTML, CSS, JavaScript December 2024",
+    "Achievements/Certifications",
+    "MUMBAI HACKS 2025",
+    "Competitive Programming",
+    "Online Certifications"
+  ],
+  "confidence_scores": {
+    "name": 0.7,
+    "email": 0.95,
+    "phone": 0.65,
+    "skills": 0.75,
+    "education": 0.85,
+    "experience": 0.85
+  }
+}

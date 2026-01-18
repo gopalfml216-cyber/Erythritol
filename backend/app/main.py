@@ -12,7 +12,7 @@ app = FastAPI(title="Wevolve API", version="1.0.0")
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,9 +64,11 @@ def root():
             "health": "/health",
             "resume_parse": "POST /api/resume/parse",
             "resume_save": "POST /api/resume/save",
+            "resume_get": "GET /api/resume/{profile_id}",
             "jobs_search": "GET /api/jobs/search",
             "job_match_details": "GET /api/jobs/{job_id}/match",
-            "skills_analyze": "POST /api/skills/analyze"
+            "skills_analyze": "POST /api/skills/analyze",
+            "skills_available": "GET /api/skills/available"
         }
     }
 
@@ -84,11 +86,10 @@ def health():
 @app.post("/api/resume/parse")
 async def parse_resume(file: UploadFile = File(...)):
     """
-    Parse uploaded PDF resume
+    Parse uploaded PDF/DOCX resume
     
     Features:
-    - Real parsing for: name, email, phone, skills
-    - Basic extraction for: education, experience
+    - Real parsing for: name, email, phone, skills, education, experience, projects
     - File storage with unique ID
     - Confidence scores for all fields
     
@@ -98,8 +99,11 @@ async def parse_resume(file: UploadFile = File(...)):
     - original_filename
     """
     # Validate file type
-    if not file.filename.endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    if not (file.filename.endswith('.pdf') or file.filename.endswith('.docx')):
+        raise HTTPException(
+            status_code=400, 
+            detail="Only PDF and DOCX files are supported"
+        )
     
     content = await file.read()
     
@@ -112,32 +116,38 @@ async def parse_resume(file: UploadFile = File(...)):
         file_id = str(uuid.uuid4())
         
         # Save file to disk
-        file_path = UPLOAD_DIR / f"{file_id}.pdf"
+        file_extension = ".pdf" if file.filename.endswith('.pdf') else ".docx"
+        file_path = UPLOAD_DIR / f"{file_id}{file_extension}"
         with open(file_path, "wb") as f:
             f.write(content)
         
-        # Real parsing
-        parsed_data = parser_service.parse(content)
+        # ✅ CRITICAL FIX: Pass filename to parser
+        parsed_data = parser_service.parse(content, file.filename)
         
-        # Merge with mock for unimplemented fields (if needed)
-        mock_resume = load_mock_resume()
-        
-        # Use real data where available, mock as fallback
+        # Result with file metadata
         result = {
             "file_id": file_id,
             "original_filename": file.filename,
-            "name": parsed_data["name"],
-            "email": parsed_data["email"],
-            "phone": parsed_data["phone"],
-            "skills": parsed_data["skills"],
-            "education": parsed_data.get("education", []) or mock_resume.get("education", []),
-            "experience": parsed_data.get("experience", []) or mock_resume.get("experience", []),
+            "name": parsed_data.get("name", ""),
+            "email": parsed_data.get("email", ""),
+            "phone": parsed_data.get("phone", ""),
+            "skills": parsed_data.get("skills", []),
+            "education": parsed_data.get("education", []),
+            "experience": parsed_data.get("experience", []),
             "projects": parsed_data.get("projects", []),
-            "confidence_scores": parsed_data["confidence_scores"]
+            "confidence_scores": parsed_data.get("confidence_scores", {
+                "name": 0.0,
+                "email": 0.0,
+                "phone": 0.0,
+                "skills": 0.0,
+                "education": 0.0,
+                "experience": 0.0
+            })
         }
         
-        print(f"✅ Parsed resume: {result['name']} ({len(result['skills'])} skills)")
-        print(f"   File saved: {file_id}.pdf")
+        print(f"✅ Parsed resume: {result['name']} | {len(result['skills'])} skills | {len(result['education'])} education")
+        print(f"   File saved: {file_id}{file_extension}")
+        print(f"   Confidence avg: {sum(result['confidence_scores'].values())/6:.2f}")
         
         return result
         
@@ -198,8 +208,7 @@ async def save_corrected_resume(data: dict):
         # Generate profile ID from email
         profile_id = f"PROF_{email.split('@')[0].upper().replace('.', '_')}"
         
-        # TODO: Save to database
-        # For now, save to JSON file for demo
+        # Save to JSON file for demo
         profiles_dir = Path("saved_profiles")
         profiles_dir.mkdir(exist_ok=True)
         
@@ -311,7 +320,8 @@ def search_jobs(
         )
         
         print(f"✅ Ranked {len(ranked_jobs)} jobs for {len(candidate_skills)} skills")
-        print(f"   Top 3 scores: {[j.get('match_score', 0) for j in ranked_jobs[:3]]}")
+        if ranked_jobs:
+            print(f"   Top 3 scores: {[j.get('match_score', 0) for j in ranked_jobs[:3]]}")
         
         return ranked_jobs
         
