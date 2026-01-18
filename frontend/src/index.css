@@ -3,17 +3,29 @@
 @tailwind utilities;
 
 @layer utilities {
-  /* Define the custom dotted background class */
-  .bg-dots-light {
-    background-color: #ffffff;
-    /* Creates a small gray circle, everything else transparent */
-    background-image: radial-gradient(#d1d5db 1px, transparent 1px);
-    /* Sets the distance between the dots (a 20px x 20px grid) */
-    background-size: 20px 20px;
+  /* High Visibility Dark Dotted Background */
+  .bg-dots-dark {
+    background-color: #050505;
+    /* Opacity increased to 0.4 (40%) and size slightly bumped to 1.5px */
+    background-image: radial-gradient(rgba(255, 255, 255, 0.30) 1.5px, transparent 1.5px);
+    background-size: 24px 24px; 
+  }
+
+  /* Keep your animation classes */
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 8s ease infinite;
   }
 }
 
-/* Keep your other base styles if you have them */
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 body {
-  font-family: 'Inter', sans-serif;
+  background-color: #050505;
+  color: #ffffff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }

@@ -1,36 +1,46 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
-// Import Components
-import { Header } from './components/layout/Header';
-import ResumeUploadPage from './pages/ResumeUpload';
+// --- Components ---
+// Ensure this path is correct based on your folder structure
+import { Header } from './components/layout/Header'; 
+
+// --- Pages ---
+// Check that these filenames match exactly what is in your 'src/pages' folder
+import ResumeUploadPage from './pages/ResumeUpload'; // Was ResumeUpload in your error
+import {ResumeReview} from './pages/ResumeReview';
 import SkillsGapPage from './pages/SkillsGapPage';
-import JobDashboard from './pages/JobDashboard'; // <--- The new import!
+import JobDash from './pages/JobDashboard'; 
 
 function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
-        <Header />
-        
-        <main>
-          <Routes>
-            {/* Route 1: Resume Upload (Home) */}
-            <Route path="/" element={<ResumeUploadPage />} />
-            
-            {/* Route 2: Skill Gap Analysis */}
-            <Route path="/gap-analysis" element={<SkillsGapPage />} />
-            
-            {/* Route 3: Job Dashboard */}
-            <Route path="/jobs" element={<JobDashboard />} /> 
-
-            {/* Fallback for 404 */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
+    <div className="min-h-screen bg-[#050505] font-['Plus_Jakarta_Sans'] text-white">
+      <Header />
+      <main>
+        <AnimateRoutes />
+      </main>
+    </div>
   );
 }
+
+const AnimateRoutes = () => {
+  const location = useLocation();
+  
+  return (
+    <Routes location={location} key={location.pathname}>
+      {/* 1. Use the correct component name: ResumeUploadPage */}
+      <Route path="/" element={<ResumeUploadPage />} />
+      
+      {/* 2. ResumeReview should no longer require props if you updated it to use the store */}
+      <Route path="/resume-review" element={<ResumeReview />} />
+      
+      <Route path="/gap-analysis" element={<SkillsGapPage />} />
+      <Route path="/jobs" element={<JobDash />} />
+      
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+};
 
 export default App;

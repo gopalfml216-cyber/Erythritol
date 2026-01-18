@@ -1,27 +1,23 @@
 import axios from 'axios';
-import type { ParsedResume } from '../types'; // Adjust path if needed
+import type { ParsedResume } from '../types'; 
 
-// 1. Define the Backend URL explicitly
-// We force it to port 8000 to avoid any "localhost" confusion
 const API_BASE_URL = 'http://localhost:8000';
 
 export const resumeApi = {
+  /**
+   * Upload and parse resume PDF
+   */
   uploadResume: async (file: File): Promise<ParsedResume> => {
-    
-    // 2. Prepare the Form Data (Required for file uploads)
     const formData = new FormData();
     formData.append('file', file);
-
+    
     try {
-      // 3. The Critical Call
-      // We manually construct the full URL to ensure NO mistakes.
-      // It matches your Backend: /api/v1/resume/parse
       const response = await axios.post(
-        `${API_BASE_URL}/api/v1/resume/parse`, 
+        `${API_BASE_URL}/api/resume/parse`, 
         formData, 
         {
           headers: {
-            'Content-Type': 'multipart/form-data', // 🚨 Crucial for files
+            'Content-Type': 'multipart/form-data',
           },
         }
       );
@@ -29,7 +25,57 @@ export const resumeApi = {
       return response.data;
       
     } catch (error) {
-      console.error("🔥 API Error:", error);
+      console.error("🔥 Upload API Error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Save corrected resume data to backend
+   */
+  saveResume: async (data: ParsedResume): Promise<{
+    success: boolean;
+    message: string;
+    profile_id: string;
+    data: ParsedResume;
+  }> => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/resume/save`,
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      console.log("✅ Save successful:", response.data);
+      return response.data;
+      
+    } catch (error) {
+      console.error("🔥 Save API Error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get saved resume by profile ID
+   */
+  getResume: async (profileId: string): Promise<{
+    success: boolean;
+    profile_id: string;
+    data: ParsedResume;
+  }> => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/resume/${profileId}`
+      );
+      
+      return response.data;
+      
+    } catch (error) {
+      console.error("🔥 Get Resume API Error:", error);
       throw error;
     }
   },

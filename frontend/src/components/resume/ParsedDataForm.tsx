@@ -1,157 +1,276 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useUserStore } from '../../store/useUserStore';
 import { motion } from 'framer-motion';
-import { Save, Plus, X, Target, Briefcase, User, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { Save, Plus, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import type { ParsedResume, Experience } from '../../types';
 
-export const ParsedDataForm = () => {
+type Section = 'personal' | 'skills' | 'experience';
+
+export const ParsedDataForm: React.FC = () => {
   const { candidate, setCandidate } = useUserStore();
+  const [activeSection, setActiveSection] = useState<Section>('personal');
   const navigate = useNavigate();
-
-  const overallScore = useMemo(() => {
-    if (!candidate?.confidence_scores) return 0;
-    const scores = Object.values(candidate.confidence_scores);
-    if (scores.length === 0) return 0;
-    const total = scores.reduce((acc, curr) => acc + (typeof curr === 'number' ? curr : 0), 0);
-    return Math.round((total / scores.length) * 100);
-  }, [candidate?.confidence_scores]);
 
   if (!candidate) return null;
 
-  const updateField = (field: keyof typeof candidate, value: any) => {
-    setCandidate({ ...candidate, [field]: value });
+  /* ----------------------------------
+     Derived / Safe Defaults
+  ---------------------------------- */
+  const skills = candidate.skills ?? [];
+  const experience = candidate.experience ?? [];
+  const confidenceScores = candidate.confidence_scores ?? {};
+
+  /* ----------------------------------
+     Overall Confidence Score
+  ---------------------------------- */
+  const overallScore = useMemo(() => {
+  const values = Object.values(confidenceScores).filter(
+    (v): v is number => typeof v === 'number'
+  );
+
+  if (values.length === 0) return 0;
+
+  const total = values.reduce((acc, val) => acc + val, 0);
+  return Math.round((total / values.length) * 100);
+}, [confidenceScores]);
+
+  /* ----------------------------------
+     Helpers
+  ---------------------------------- */
+  const updateField = <K extends keyof ParsedResume>(
+    field: K,
+    value: ParsedResume[K]
+  ) => {
+    setCandidate({
+      ...candidate,
+      [field]: value,
+    });
+  };
+
+  const addSkill = () => {
+    const newSkill = prompt('Enter new skill:');
+    if (!newSkill) return;
+    updateField('skills', [...skills, newSkill]);
   };
 
   const removeSkill = (skillToRemove: string) => {
-    updateField('skills', candidate.skills.filter(s => s !== skillToRemove));
+    updateField(
+      'skills',
+      skills.filter((s) => s !== skillToRemove)
+    );
   };
 
+  const updateExperience = (index: number, updated: Partial<Experience>) => {
+    const updatedExp = [...experience];
+    updatedExp[index] = { ...updatedExp[index], ...updated };
+    updateField('experience', updatedExp);
+  };
+
+  const handleSave = () => {
+    navigate('/gap-analysis');
+  };
+
+  /* ----------------------------------
+     Render
+  ---------------------------------- */
   return (
-    <div className="max-w-6xl mx-auto pb-20">
-      {/* --- TOP HEADER SECTION --- */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
+    <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* HEADER */}
+      <div className="bg-slate-900 text-white p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">Review Your AI Profile</h1>
-          <p className="text-slate-500 font-bold">We've extracted these details. Fine-tune them to improve your match score.</p>
+          <h2 className="text-2xl font-bold">Review Your Profile</h2>
+          <p className="text-slate-400 text-sm">
+            We extracted this from your resume. Please correct any errors.
+          </p>
         </div>
-        <div className="bg-white p-4 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-           <div className="text-right">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profile Health</p>
-              <p className="text-2xl font-black text-blue-600">{overallScore}%</p>
-           </div>
-           <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
-              <CheckCircle2 size={24} />
-           </div>
+
+        <div
+          className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${
+            overallScore > 75
+              ? 'bg-green-900/30 border-green-500/50'
+              : 'bg-amber-900/30 border-amber-500/50'
+          }`}
+        >
+          <div className="text-right">
+            <p className="text-xs text-slate-400 uppercase font-semibold">
+              AI Confidence
+            </p>
+            <p
+              className={`text-xl font-bold ${
+                overallScore > 75 ? 'text-green-400' : 'text-amber-400'
+              }`}
+            >
+              {overallScore}%
+            </p>
+          </div>
+          {overallScore < 75 ? (
+            <AlertTriangle className="text-amber-400" />
+          ) : (
+            <CheckCircle2 className="text-green-400" />
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-8">
-        {/* --- LEFT: Personal & Skills --- */}
-        <div className="col-span-12 lg:col-span-5 space-y-8">
-          {/* Personal Info Card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-slate-900 text-white rounded-2xl"><User size={20} /></div>
-              <h3 className="text-xl font-black text-slate-800">Identity</h3>
-            </div>
-            <div className="space-y-4">
-              {['name', 'email', 'phone'].map((field) => (
-                <div key={field} className="group">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block tracking-widest">{field}</label>
-                  <input
-                    type="text"
-                    value={(candidate as any)[field] || ''}
-                    onChange={(e) => updateField(field as any, e.target.value)}
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-blue-600 focus:bg-white rounded-2xl transition-all outline-none font-bold text-slate-700"
-                  />
-                </div>
-              ))}
-            </div>
-          </motion.div>
+      {/* TABS */}
+      <div className="flex border-b border-gray-200">
+        {(['personal', 'skills', 'experience'] as Section[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveSection(tab)}
+            className={`flex-1 py-4 text-sm font-medium uppercase tracking-wider transition-colors
+              ${
+                activeSection === tab
+                  ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50'
+                  : 'text-gray-500 hover:text-gray-700'
+              }
+            `}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
 
-          {/* Skills Card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-blue-600 text-white rounded-2xl"><Target size={20} /></div>
-                <h3 className="text-xl font-black text-slate-800">Skillset</h3>
+      {/* CONTENT */}
+      <div className="p-8 min-h-[400px]">
+        <motion.div
+          key={activeSection}
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {/* PERSONAL */}
+          {activeSection === 'personal' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Full Name"
+                value={candidate.name ?? ''}
+                onChange={(v) => updateField('name', v)}
+              />
+              <Input
+                label="Email Address"
+                value={candidate.email ?? ''}
+                onChange={(v) => updateField('email', v)}
+              />
+              <Input
+                label="Phone Number"
+                value={candidate.phone ?? ''}
+                onChange={(v) => updateField('phone', v)}
+              />
+            </div>
+          )}
+
+          {/* SKILLS */}
+          {activeSection === 'skills' && (
+            <div>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"
+                  >
+                    {skill}
+                    <button
+                      onClick={() => removeSkill(skill)}
+                      className="text-blue-400 hover:text-red-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  onClick={addSkill}
+                  className="border-2 border-dashed border-gray-300 text-gray-500 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 hover:border-blue-500 hover:text-blue-500"
+                >
+                  <Plus size={14} /> Add Skill
+                </button>
               </div>
-              <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Plus size={20} /></button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {candidate.skills.map((skill) => (
-                <span key={skill} className="pl-4 pr-2 py-2 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase flex items-center gap-2 group transition-all hover:bg-blue-600">
-                  {skill}
-                  <button onClick={() => removeSkill(skill)} className="p-1 hover:bg-white/20 rounded-md"><X size={12} /></button>
-                </span>
-              ))}
-            </div>
-          </motion.div>
-        </div>
+          )}
 
-        {/* --- RIGHT: Experience & Education --- */}
-        <div className="col-span-12 lg:col-span-7 space-y-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="p-3 bg-indigo-600 text-white rounded-2xl"><Briefcase size={20} /></div>
-              <h3 className="text-xl font-black text-slate-800">Experience</h3>
-            </div>
+          {/* EXPERIENCE */}
+          {activeSection === 'experience' && (
             <div className="space-y-6">
-              {candidate.experience.map((exp, index) => (
-                <div key={index} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 hover:border-blue-200 transition-all group">
-                  <div className="flex justify-between items-start mb-2">
-                    <input
-                      value={exp.title}
-                      className="text-lg font-black text-slate-800 bg-transparent outline-none w-full"
-                      onChange={(e) => {
-                        const newExp = [...candidate.experience];
-                        newExp[index].title = e.target.value;
-                        updateField('experience', newExp);
-                      }}
-                    />
-                    <span className="text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">{exp.duration}</span>
-                  </div>
+              {experience.map((exp, index) => (
+                <div
+                  key={index}
+                  className="p-4 border border-gray-200 rounded-lg bg-gray-50"
+                >
+                  <input
+                    value={exp.title}
+                    placeholder="Job Title"
+                    className="font-bold bg-transparent border-b border-transparent focus:border-blue-500 outline-none text-lg w-full"
+                    onChange={(e) =>
+                      updateExperience(index, { title: e.target.value })
+                    }
+                  />
                   <input
                     value={exp.company}
-                    className="text-sm font-bold text-blue-600 bg-transparent outline-none w-full mb-4"
-                    onChange={(e) => {
-                      const newExp = [...candidate.experience];
-                      newExp[index].company = e.target.value;
-                      updateField('experience', newExp);
-                    }}
+                    placeholder="Company Name"
+                    className="text-gray-600 w-full bg-transparent mt-2 outline-none italic"
+                    onChange={(e) =>
+                      updateExperience(index, { company: e.target.value })
+                    }
                   />
-                  <div className="space-y-1">
-                    {exp.description.map((desc, i) => (
-                      <p key={i} className="text-xs text-slate-500 font-medium leading-relaxed">• {desc}</p>
-                    ))}
-                  </div>
+                  <input
+                    value={exp.duration}
+                    placeholder="Duration"
+                    className="text-sm text-gray-500 bg-transparent mt-2 outline-none"
+                    onChange={(e) =>
+                      updateExperience(index, { duration: e.target.value })
+                    }
+                  />
                 </div>
               ))}
+              {experience.length === 0 && (
+                <p className="text-center text-gray-400">
+                  No experience detected. You can add it manually.
+                </p>
+              )}
             </div>
-          </motion.div>
-        </div>
+          )}
+        </motion.div>
       </div>
 
-      {/* --- FLOATING ACTION BAR --- */}
-      <motion.div 
-        initial={{ y: 100 }} animate={{ y: 0 }}
-        className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-xl p-4 rounded-[2rem] border border-white/10 shadow-2xl flex items-center gap-8 px-10"
-      >
-        <div className="hidden md:block">
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</p>
-           <p className="text-sm font-bold text-white">Verification Mode</p>
-        </div>
-        <div className="h-8 w-[1px] bg-white/10 hidden md:block" />
-        <div className="flex gap-4">
-          <button onClick={() => setCandidate(null)} className="px-6 py-3 text-white font-black text-sm hover:text-red-400 transition-all">Discard</button>
-          <button 
-            onClick={() => navigate('/gap-analysis')}
-            className="px-8 py-3 bg-blue-600 text-white font-black text-sm rounded-xl flex items-center gap-2 hover:bg-white hover:text-blue-600 transition-all shadow-xl shadow-blue-500/20"
-          >
-            <Save size={18} /> Confirm Profile
-          </button>
-        </div>
-      </motion.div>
+      {/* FOOTER */}
+      <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end gap-4">
+        <button
+          onClick={() => setCandidate(null)}
+          className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-lg"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
+          <Save size={18} />
+          Confirm & Analyze
+        </button>
+      </div>
     </div>
   );
 };
+
+/* ----------------------------------
+   Small Reusable Input
+---------------------------------- */
+const Input = ({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) => (
+  <div className="space-y-2">
+    <label className="text-sm font-semibold text-gray-700">{label}</label>
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+    />
+  </div>
+);

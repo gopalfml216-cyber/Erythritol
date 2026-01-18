@@ -1,67 +1,67 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
-// --- TYPES (Must Match Backend Exactly!) ---
-
-export interface Education {
-  degree: string;
-  field: string;          // ✅ Added (backend has this)
-  institution: string;
-  year?: string;          // ✅ Made optional (backend has Optional)
-  cgpa?: number;          // ✅ Renamed from "score", changed to number
-}
-
-export interface Experience {
-  title: string;          // ✅ Renamed from "role" to match backend
-  company: string;
-  duration: string;
-  description: string[];
-}
-
-export interface ParsedResume {
+export interface Candidate {
   name: string;
   email: string;
   phone: string;
   skills: string[];
-  experience: Experience[];
-  education: Education[];
-  projects: string[];     // ✅ Added (backend sends this)
-  confidence_scores: {    // ✅ Renamed from "confidenceScore" to match backend
-    [key: string]: number;
+  experience: any[]; 
+  education: any[];
+  projects: string[];
+  confidence_scores: {
+    skills: number;
+    email: number;
+    phone: number;
   };
 }
 
-// --- STORE STATE ---
-
 interface UserState {
-  // Data
-  candidate: ParsedResume | null;
-  profile: ParsedResume | null;     // ✅ Added as alias (some components might use this)
+  // --- Data ---
+  candidate: Candidate | null;
+  // ✅ NEW: Field to store the file URL
+  resumeFile: string | null; 
   
-  // Upload state
+  setCandidate: (candidate: Candidate | null) => void;
+  // ✅ NEW: Action to set the file URL
+  setResumeFile: (url: string | null) => void;
+  clearCandidate: () => void;
+
+  // --- UI State ---
   isUploading: boolean;
   uploadProgress: number;
-  
-  // Actions
-  setCandidate: (data: ParsedResume | null) => void;
-  setProfile: (data: ParsedResume | null) => void;  // ✅ Alias for setCandidate
+  error: string | null;
   setUploading: (status: boolean) => void;
+  setUploadProgress: (progress: number) => void;
   setProgress: (progress: number) => void;
-  clearProfile: () => void;
+  setError: (error: string | null) => void;
 }
 
-// --- THE STORE ---
+export const useUserStore = create<UserState>()(
+  persist(
+    (set) => ({
+      candidate: null,
+      resumeFile: null, // Initial state
 
-export const useUserStore = create<UserState>((set) => ({
-  // Initial state
-  candidate: null,
-  profile: null,
-  isUploading: false,
-  uploadProgress: 0,
-  
-  // Actions
-  setCandidate: (data) => set({ candidate: data, profile: data }),
-  setProfile: (data) => set({ candidate: data, profile: data }),
-  setUploading: (status) => set({ isUploading: status }),
-  setProgress: (progress) => set({ uploadProgress: progress }),
-  clearProfile: () => set({ candidate: null, profile: null, uploadProgress: 0 }),
-}));
+      isUploading: false,
+      uploadProgress: 0,
+      error: null,
+
+      setCandidate: (data) => set({ candidate: data }),
+      setResumeFile: (url) => set({ resumeFile: url }),
+      clearCandidate: () => set({ candidate: null, resumeFile: null }),
+
+      setUploading: (status) => set({ isUploading: status }),
+      setUploadProgress: (progress) => set({ uploadProgress: progress }),
+      setProgress: (progress) => set({ uploadProgress: progress }),
+      setError: (err) => set({ error: err }),
+    }),
+    {
+      name: 'wevolve-user-storage',
+      storage: createJSONStorage(() => localStorage),
+      // We only persist candidate data. Blob URLs (resumeFile) don't work after refresh, 
+      // so we don't strictly need to persist it, but it doesn't hurt.
+      partialize: (state) => ({ candidate: state.candidate }), 
+    }
+  )
+);

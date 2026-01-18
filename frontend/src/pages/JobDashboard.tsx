@@ -1,7 +1,7 @@
-import React from 'react';
+
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, MapPin, ArrowUpRight, Filter, Briefcase, Zap, TrendingUp, ArrowLeft } from 'lucide-react';
+import { Search, MapPin, Filter, Briefcase, Zap, TrendingUp, ArrowLeft } from 'lucide-react';
 
 const JobDash = () => {
   const jobs = [
@@ -12,10 +12,11 @@ const JobDash = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#050505] pt-24 pb-12 px-6 font-['Plus_Jakarta_Sans'] text-white relative">
+    // CHANGE 1: Applied 'bg-dots-dark' and 'pt-28' for spacing
+    <div className="min-h-screen bg-dots-dark pt-28 pb-12 px-6 font-['Plus_Jakarta_Sans'] text-white relative">
       
-      {/* Background */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.3] -z-10 pointer-events-none" />
+      {/* CHANGE 2: Added Top Gradient Fade for depth (replaces the old grid pattern) */}
+      <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-[#050505] to-transparent -z-10 pointer-events-none" />
 
       <div className="max-w-[1600px] mx-auto space-y-6">
         
@@ -74,7 +75,8 @@ const JobDash = () => {
               initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
               className="bg-[#0A0A0A] p-8 rounded-3xl border border-white/10 text-center relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-grid-pattern opacity-10" />
+              {/* CHANGE 3: Used dots inside the card for consistency */}
+              <div className="absolute inset-0 bg-dots-dark opacity-20" />
               <h1 className="text-2xl font-bold mb-2 font-['Space_Grotesk']">Market Opportunities</h1>
               <p className="text-slate-400 text-sm mb-6 font-medium">Live feed of roles matching your skill vector.</p>
               
